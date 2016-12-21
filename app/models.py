@@ -1,5 +1,7 @@
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+from flask import current_app
+from itsdangerous import TimedJSONWebSignatureSerializer as Serializer
 from . import db, login_manager
 
 
@@ -23,7 +25,7 @@ class Role(db.Model):
     def insert_roles():
         roles = {
             'User': (Permission.FOLLOW |
-                     Permission.COMMRNT |
+                     Permission.COMMENT |
                      Permission.WRITE_ARTICLES, True),
             'Moderator': (Permission.FOLLOW |
                           Permission.COMMENT |
@@ -62,6 +64,23 @@ class User(UserMixin, db.Model):
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    confirmed = db.Column(db.Boolean, default=False)
+
+    def generate_confirmation_token(self, expiration=3600):
+        s = Serializer(current_app.config['SECRET_KEY'], expiration)
+        return s.dumps({'confirm': self.id})
+
+    def confirm(self, token):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token)
+        except:
+            return False
+        if data.get('confirm') != self.id:
+            return False
+        self.confirmed = True
+        return True
 
     def __repr__(self):
         return '<User %r>' % self.username
