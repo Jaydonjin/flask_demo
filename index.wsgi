@@ -1,4 +1,4 @@
 import sae
-from flask_demo import app
+from run import app
 
     application = sae.create_wsgi_app(app)
